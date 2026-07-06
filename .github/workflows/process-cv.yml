@@ -1,0 +1,47 @@
+name: Procesar CV subido
+
+on:
+  # Disparo inmediato: llama a este workflow con client_payload.cv_id desde
+  # tu webhook de Supabase (o manualmente vía API) cuando alguien sube un CV.
+  repository_dispatch:
+    types: [cv_uploaded]
+
+  # Disparo manual desde la pestaña Actions, útil para reprocesar un CV.
+  workflow_dispatch:
+    inputs:
+      cv_id:
+        description: "ID de la fila en la tabla cvs a procesar (vacío = procesar todos los pendientes)"
+        required: false
+
+  # Fallback sin necesidad de configurar el webhook de Supabase: revisa cada
+  # 10 min si hay CVs con status='pending'. Bórralo si ya configuraste el
+  # webhook y prefieres solo disparo por evento.
+  schedule:
+    - cron: "*/10 * * * *"
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r pipeline/requirements.txt
+
+      - name: Clasificar CV(s)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "${{ github.event.client_payload.cv_id }}" ]; then
+            python -m pipeline.cv_classifier.cli --cv-id "${{ github.event.client_payload.cv_id }}"
+          elif [ -n "${{ github.event.inputs.cv_id }}" ]; then
+            python -m pipeline.cv_classifier.cli --cv-id "${{ github.event.inputs.cv_id }}"
+          else
+            python -m pipeline.cv_classifier.cli --pending
+          fi
