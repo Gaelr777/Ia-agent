@@ -11,6 +11,7 @@ Dos modos:
 import argparse
 import sys
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 from pipeline.common.supabase_client import get_client
@@ -71,17 +72,22 @@ def run_cv_id(cv_id: str) -> None:
                 "alternative_codes": result["alternative_sectors"],
                 "model_used": result["model_used"],
                 "raw_model_output": result["raw_model_output"],
-            }
+            },
+            on_conflict="cv_id",
         ).execute()
 
-        client.table("cvs").update({"status": "classified"}).eq(
-            "id", cv_id
-        ).execute()
+        client.table("cvs").update(
+            {"status": "classified", "processed_at": datetime.now(timezone.utc).isoformat()}
+        ).eq("id", cv_id).execute()
         print(f"CV {cv_id} clasificado como sector {result['sector_code']}")
 
     except Exception as exc:
         client.table("cvs").update(
-            {"status": "error", "error_message": str(exc)}
+            {
+                "status": "error",
+                "error_message": str(exc),
+                "processed_at": datetime.now(timezone.utc).isoformat(),
+            }
         ).eq("id", cv_id).execute()
         raise
 
