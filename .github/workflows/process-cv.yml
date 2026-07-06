@@ -16,9 +16,13 @@ on:
   # Fallback sin necesidad de configurar el webhook de Supabase: revisa cada
   # 10 min si hay CVs con status='pending'. Bórralo si ya configuraste el
   # webhook y prefieres solo disparo por evento.
+  # Fallback sin necesidad de configurar el webhook de Supabase: revisa cada
+  # 15 min si hay CVs con status='pending'. Bórralo si ya configuraste el
+  # webhook y prefieres solo disparo por evento — en un repo privado, este
+  # polling consume minutos de Actions 24/7 aunque no haya CVs pendientes
+  # (en repos públicos Actions es gratis/ilimitado).
   schedule:
-    - cron: "*/10 * * * *"
-
+    - cron: "*/15 * * * *"
 jobs:
   classify:
     runs-on: ubuntu-latest
