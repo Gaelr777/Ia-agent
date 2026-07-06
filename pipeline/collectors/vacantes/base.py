@@ -8,7 +8,7 @@ propio `search(scian_code, keywords) -> list[JobPosting]` y usa
 """
 import time
 import urllib.robotparser
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from urllib.parse import urljoin, urlparse
 
