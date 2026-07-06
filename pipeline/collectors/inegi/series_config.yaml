@@ -26,21 +26,21 @@ national:
 
 by_sector:
   "31-33":
-    - indicator_id: "TODO"
+    - indicator_id: "702844"
       source: EMIM
-      description: "Personal ocupado total, industrias manufactureras (sectores 31-33), Encuesta Mensual de la Industria Manufacturera"
+      description: "Personal ocupado total, Total Industrias manufactureras (número de personas), EMIM Serie 2018"
       frequency: monthly
-      verified: false
-    - indicator_id: "TODO"
+      verified: true
+    - indicator_id: "704728"
       source: EMIM
-      description: "Horas trabajadas, industrias manufactureras (sectores 31-33)"
+      description: "Horas trabajadas por el personal ocupado total, Total Industrias manufactureras (miles de horas), EMIM Serie 2018"
       frequency: monthly
-      verified: false
-    - indicator_id: "TODO"
+      verified: true
+    - indicator_id: "706612"
       source: EMIM
-      description: "Remuneraciones medias reales, industrias manufactureras (sectores 31-33)"
+      description: "Remuneraciones pagadas al personal ocupado, Total Industrias manufactureras (miles de pesos corrientes, nominal), EMIM Serie 2018"
       frequency: monthly
-      verified: false
+      verified: true
 
   # Para agregar otro sector piloto (ej. '54' Servicios profesionales),
   # localiza sus indicadores vía el Constructor de Consultas y agrega un
