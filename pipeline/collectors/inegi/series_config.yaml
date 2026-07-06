@@ -1,0 +1,47 @@
+# Series de INEGI a recolectar, por sector SCIAN.
+#
+# `indicator_id` son los IDs numéricos del Banco de Indicadores de INEGI.
+# Los que traen `verified: false` son los IDs más citados en documentación
+# pública/tutoriales de INEGI para ese concepto, PERO no pude confirmarlos
+# en vivo desde este entorno (sin salida de red a inegi.org.mx). Antes de
+# usarlos en producción corre:
+#
+#   python -m pipeline.collectors.inegi.verify_series --indicator-id <ID>
+#
+# y confirma que el nombre/descripción que regresa corresponde a lo
+# esperado. Para encontrar el ID correcto si el de aquí no aplica, usa el
+# Constructor de Consultas: https://www.inegi.org.mx/app/indicadores/
+
+national:
+  - indicator_id: "444612"
+    source: ENOE
+    description: "Tasa de desocupación (TD), nacional, series ajustada por estacionalidad"
+    frequency: monthly
+    verified: false
+  - indicator_id: "436148"
+    source: IGAE
+    description: "Indicador Global de la Actividad Económica (IGAE), variación mensual"
+    frequency: monthly
+    verified: false
+
+by_sector:
+  "31-33":
+    - indicator_id: "TODO"
+      source: EMIM
+      description: "Personal ocupado total, industrias manufactureras (sectores 31-33), Encuesta Mensual de la Industria Manufacturera"
+      frequency: monthly
+      verified: false
+    - indicator_id: "TODO"
+      source: EMIM
+      description: "Horas trabajadas, industrias manufactureras (sectores 31-33)"
+      frequency: monthly
+      verified: false
+    - indicator_id: "TODO"
+      source: EMIM
+      description: "Remuneraciones medias reales, industrias manufactureras (sectores 31-33)"
+      frequency: monthly
+      verified: false
+
+  # Para agregar otro sector piloto (ej. '54' Servicios profesionales),
+  # localiza sus indicadores vía el Constructor de Consultas y agrega un
+  # bloque igual a este bajo su código SCIAN.
