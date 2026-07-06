@@ -61,12 +61,11 @@ def render_summary_md(report: dict) -> str:
     for item in report["top_soft_skills"]:
         lines.append(f"- {item['skill']} ({item['count']} vacantes)")
 
-    rising = report["hard_skills_month_over_month"]["rising"]
+    rising = [item for item in report["hard_skills_month_over_month"]["rising"] if item[1] > 0]
     if rising:
         lines.append("\n## Habilidades técnicas en ascenso (vs. mes anterior)")
         for skill, delta in rising:
-            if delta > 0:
-                lines.append(f"- {skill}: +{delta}")
+            lines.append(f"- {skill}: +{delta}")
 
     return "\n".join(lines)
 
