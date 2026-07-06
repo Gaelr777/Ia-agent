@@ -1,0 +1,82 @@
+name: Recolección y reporte mensual
+
+on:
+  # 1º de cada mes a las 08:00 UTC (~02:00 hora CDMX). Ajusta si te importa
+  # correr después de que INEGI/EMIM publiquen su dato del mes.
+  schedule:
+    - cron: "0 8 1 * *"
+
+  # Disparo manual: si pasas `sector`, corre solo ese; si lo dejas vacío,
+  # corre para todos los sectores con is_tracked=true.
+  workflow_dispatch:
+    inputs:
+      sector:
+        description: "Código SCIAN a recolectar (vacío = todos los sectores marcados is_tracked)"
+        required: false
+
+jobs:
+  determine-sectors:
+    runs-on: ubuntu-latest
+    outputs:
+      sectors: ${{ steps.list.outputs.sectors }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r pipeline/requirements.txt
+      - id: list
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -n "${{ github.event.inputs.sector }}" ]; then
+            echo "sectors=[\"${{ github.event.inputs.sector }}\"]" >> "$GITHUB_OUTPUT"
+          else
+            SECTORS=$(python -m pipeline.collectors.list_tracked_sectors)
+            echo "sectors=$SECTORS" >> "$GITHUB_OUTPUT"
+          fi
+
+  collect-and-report:
+    needs: determine-sectors
+    if: needs.determine-sectors.outputs.sectors != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sector: ${{ fromJson(needs.determine-sectors.outputs.sectors) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r pipeline/requirements.txt
+
+      - name: Recolectar series de INEGI
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          INEGI_API_TOKEN: ${{ secrets.INEGI_API_TOKEN }}
+        run: python -m pipeline.collectors.inegi.collect --sector "${{ matrix.sector }}"
+
+      - name: Recolectar vacantes
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python -m pipeline.collectors.vacantes.collect --sector "${{ matrix.sector }}"
+
+      - name: Extraer habilidades de las vacantes nuevas
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m pipeline.analysis.skills_extraction --sector "${{ matrix.sector }}"
+
+      - name: Generar reporte mensual
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python -m pipeline.analysis.generate_report --sector "${{ matrix.sector }}" --period "$(date +%Y-%m)"
