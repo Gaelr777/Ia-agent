@@ -25,7 +25,16 @@ automatizada.**
   de búsqueda (sin login, sin CVs de candidatos, solo el listado de
   vacantes), respeta `robots.txt`, identifica tu bot con un User-Agent
   claro y un contacto, y limita la frecuencia (ver `common/cache.py`).
-
+- **Estado real (2026-07-07):** encontramos y confirmamos la API JSON
+  interna del portal (`POST /api/Login/busqueda/empleos`, ver
+  `pipeline/collectors/vacantes/empleo_gob.py`), pero devuelve HTTP 403 al
+  llamarla desde GitHub Actions — no es un bloqueo general de IP (la
+  página principal del sitio sí responde 200 desde el mismo runner), así
+  que probablemente el endpoint de búsqueda requiere algún tipo de sesión
+  o token que no hemos identificado. Pendiente de investigar más, o de
+  preguntarle directamente a la STPS/CGSNE por un canal de sindicación
+  oficial para terceros (sería la solución más robusta y sin esta
+  fragilidad técnica).
 ## 2. OCC Mundial y Computrabajo — opcional, con precaución
 
 - Son plataformas comerciales privadas. Sus avisos legales/ToS
