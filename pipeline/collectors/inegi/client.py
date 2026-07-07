@@ -41,7 +41,7 @@ def fetch_indicators(
     indicator_ids: list[str],
     area_geografica: str = NATIONAL_AREA,
     idioma: str = "es",
-    recientes: bool = False,
+    recientes: bool = True,
     use_cache: bool = True,
 ) -> dict:
     """Trae uno o más indicadores. Devuelve el JSON crudo de INEGI (una lista
