@@ -31,23 +31,36 @@ national:
     frequency: monthly
     verified: false
 
+# CONFIRMADO EN PRODUCCIÓN (2026-07-07): estas 3 claves de EMIM (702844,
+# 704728, 706612), aunque son correctas y visibles en el Banco de
+# Indicadores web de INEGI, NO son consultables por el método genérico
+# INDICATOR con fuente de datos BISE — regresan "ErrorCode:100 - No se
+# encontraron resultados". Se probó exhaustivamente: patrón de URL, área
+# geográfica (00 y 0700), recientes (true/false) — todo según la sintaxis
+# oficial documentada por INEGI. Como control, el indicador de ejemplo de
+# la propia documentación de INEGI (1002000001) SÍ funciona con el mismo
+# código, confirmando que el problema es específico de EMIM, no del
+# cliente/token. Probablemente EMIM vive en otro catálogo/fuente de datos
+# de INEGI no expuesto igual que los indicadores "core" de BISE. Pendiente:
+# preguntar a atencion.usuarios@inegi.org.mx cómo consultar EMIM vía API, o
+# usar sus descargas de tablas en bruto como alternativa a este endpoint.
 by_sector:
   "31-33":
     - indicator_id: "702844"
       source: EMIM
       description: "Personal ocupado total, Total Industrias manufactureras (número de personas), EMIM Serie 2018"
       frequency: monthly
-      verified: true
+      verified: false
     - indicator_id: "704728"
       source: EMIM
       description: "Horas trabajadas por el personal ocupado total, Total Industrias manufactureras (miles de horas), EMIM Serie 2018"
       frequency: monthly
-      verified: true
+      verified: false
     - indicator_id: "706612"
       source: EMIM
       description: "Remuneraciones pagadas al personal ocupado, Total Industrias manufactureras (miles de pesos corrientes, nominal), EMIM Serie 2018"
       frequency: monthly
-      verified: true
+      verified: false
 
   # Para agregar otro sector piloto (ej. '54' Servicios profesionales),
   # localiza sus indicadores vía el Constructor de Consultas y agrega un
