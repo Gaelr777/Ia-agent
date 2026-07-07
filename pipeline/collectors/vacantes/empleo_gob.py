@@ -1,38 +1,28 @@
 """Colector para el Portal del Empleo (empleo.gob.mx / STPS), fuente
 primaria recomendada — ver docs/LEGAL_TOS.md.
 
-ESTADO: esqueleto funcional, con los TODOs marcados donde hace falta
-inspeccionar la estructura HTML real del sitio (este entorno de desarrollo
-no tiene salida de red hacia dominios públicos, así que no pude abrir el
-sitio para mapear los selectores exactos). Antes de usarlo en producción:
+El portal es una SPA de Angular (el HTML crudo no trae las vacantes), pero
+usa una API JSON interna para la búsqueda que confirmamos inspeccionando el
+tráfico de red del sitio real:
 
-1. Abre https://www.empleo.gob.mx/ en un navegador, busca vacantes por
-   palabra clave del sector (ej. "manufactura", "producción industrial") y
-   revisa con las devtools la estructura del listado de resultados.
-2. Actualiza `RESULT_ITEM_SELECTOR` y los selectores de campos abajo.
-3. Si encuentras que el portal expone un endpoint JSON/XML detrás del
-   buscador (común en portales de bolsa de trabajo gubernamentales,
-   pensado para sindicación), prefiere consumir ese endpoint directamente
-   en vez de parsear HTML — es más estable y explícitamente ToS-friendly.
+    POST https://www.empleo.gob.mx/api/Login/busqueda/empleos
+    body: {"que": "<palabra clave>", "donde": {}, "items": 50, "page": 0,
+           "orden": "fecha_publicacion desc", "filter": {}}
 
-Palabras clave por sector: usa `SECTOR_KEYWORDS` en este archivo para mapear
-un código SCIAN a términos de búsqueda razonables.
+Solo se pide la primera página (50 resultados más recientes) por palabra
+clave — suficiente para un resumen mensual, no se busca ser exhaustivo.
 """
-from datetime import date
-
-from bs4 import BeautifulSoup
+from datetime import date, datetime
 
 from pipeline.collectors.vacantes.base import JobPosting, RateLimitedSession
 
-SEARCH_URL = "https://www.empleo.gob.mx/PortalWeb/BuscarVacante"  # TODO: confirma la ruta real de búsqueda
+SEARCH_URL = "https://www.empleo.gob.mx/api/Login/busqueda/empleos"
 
 SECTOR_KEYWORDS: dict[str, list[str]] = {
     "31-33": ["manufactura", "producción industrial", "operador de máquina", "planta industrial"],
     "54": ["servicios profesionales", "consultoría"],
     # Agrega más sectores conforme los necesites (ver data/scian_sectors.json).
 }
-
-RESULT_ITEM_SELECTOR = "div.vacante-card"  # TODO: verificar contra el HTML real
 
 
 def search(scian_code: str, max_results: int = 50) -> list[JobPosting]:
@@ -45,18 +35,29 @@ def search(scian_code: str, max_results: int = 50) -> list[JobPosting]:
     postings: list[JobPosting] = []
 
     for keyword in keywords:
-        response = session.get(SEARCH_URL, params={"q": keyword})
+        payload = {
+            "que": keyword,
+            "donde": {},
+            "items": max_results,
+            "page": 0,
+            "orden": "fecha_publicacion desc",
+            "filter": {},
+        }
+        try:
+            response = session.post(SEARCH_URL, json=payload)
+        except Exception as exc:
+            print(f"Aviso: búsqueda '{keyword}' falló, se omite: {exc}")
+            continue
+
         if response.status_code != 200:
             print(f"Aviso: búsqueda '{keyword}' devolvió HTTP {response.status_code}, se omite.")
             continue
 
-        soup = BeautifulSoup(response.text, "html.parser")
-        for item in soup.select(RESULT_ITEM_SELECTOR)[: max_results]:
+        for item in response.json().get("content", []):
             posting = _parse_item(item)
             if posting:
                 postings.append(posting)
 
-    # Dedup por external_id (una vacante puede salir en varias búsquedas de keyword)
     seen = set()
     unique = []
     for p in postings:
@@ -66,27 +67,43 @@ def search(scian_code: str, max_results: int = 50) -> list[JobPosting]:
     return unique
 
 
-def _parse_item(item) -> JobPosting | None:
-    # TODO: ajustar selectores a la estructura real del sitio.
-    title_el = item.select_one(".titulo-vacante")
-    if title_el is None:
+def _parse_item(item: dict) -> JobPosting | None:
+    vacancy_id = item.get("id")
+    title = item.get("tituloOferta")
+    if vacancy_id is None or not title:
         return None
-    external_id = item.get("data-vacante-id") or title_el.get_text(strip=True)
 
     return JobPosting(
-        external_id=str(external_id),
-        title=title_el.get_text(strip=True),
-        company=_text_or_none(item.select_one(".empresa")),
-        location=_text_or_none(item.select_one(".ubicacion")),
-        description_raw=_text_or_none(item.select_one(".descripcion")) or "",
-        description_url=_href_or_none(item.select_one("a")),
-        posted_at=date.today(),
+        external_id=str(vacancy_id),
+        title=title,
+        company=item.get("nombreEmpresa"),
+        location=_location(item),
+        description_raw=item.get("descripcion") or "",
+        # La ruta real incluye el título en slug (ej. .../21037150-MECANICO-OPERADOR/Manufactura);
+        # no lo reconstruimos, así que este link puede no resolver perfecto, pero el ID sí es correcto.
+        description_url=f"https://www.empleo.gob.mx/puesto-de-trabajo/vacante/{vacancy_id}",
+        salary_min=_salary(item.get("salarioOfrecido")),
+        salary_max=_salary(item.get("salarioOfrecidoMaximo")),
+        posted_at=_parse_posted_at(item.get("fechaPublicacion")),
     )
 
 
-def _text_or_none(el) -> str | None:
-    return el.get_text(strip=True) if el else None
+def _location(item: dict) -> str | None:
+    parts = [p for p in (item.get("municipio"), item.get("entidad")) if p]
+    return ", ".join(parts) if parts else None
 
 
-def _href_or_none(el) -> str | None:
-    return el.get("href") if el else None
+def _salary(value) -> float | None:
+    # El portal manda 0.0 cuando el campo no está especificado.
+    if not value:
+        return None
+    return float(value)
+
+
+def _parse_posted_at(value: str | None) -> date | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value).date()
+    except ValueError:
+        return None
