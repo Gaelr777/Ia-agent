@@ -64,7 +64,7 @@ class RateLimitedSession:
             self._robots_parsers[host] = parser
         return self._robots_parsers[host]
 
-    def get(self, url: str, **kwargs) -> requests.Response:
+    def _wait_and_check_robots(self, url: str) -> None:
         if not self._robots_parser_for(url).can_fetch(USER_AGENT, url):
             raise RobotsDisallowed(f"robots.txt prohíbe acceder a {url}")
 
@@ -73,8 +73,16 @@ class RateLimitedSession:
         if elapsed < self.delay_seconds:
             time.sleep(self.delay_seconds - elapsed)
 
+    def get(self, url: str, **kwargs) -> requests.Response:
+        self._wait_and_check_robots(url)
         response = self.session.get(url, timeout=30, **kwargs)
-        self._last_request_at[host] = time.monotonic()
+        self._last_request_at[urlparse(url).netloc] = time.monotonic()
+        return response
+
+    def post(self, url: str, **kwargs) -> requests.Response:
+        self._wait_and_check_robots(url)
+        response = self.session.post(url, timeout=30, **kwargs)
+        self._last_request_at[urlparse(url).netloc] = time.monotonic()
         return response
 
 
