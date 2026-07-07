@@ -12,6 +12,13 @@
 # esperado. Para encontrar el ID correcto si el de aquí no aplica, usa el
 # Constructor de Consultas: https://www.inegi.org.mx/app/indicadores/
 
+# CONFIRMADO INVÁLIDO en producción (corrida real en GitHub Actions,
+# 2026-07-07): INEGI respondió "ErrorCode:100 - No se encontraron
+# resultados" para el ID 444612. No es solo "sin verificar", ya sabemos que
+# está mal — hay que reemplazarlo por el ID correcto vía el Constructor de
+# Consultas (busca "Tasa de desocupación" ENOE nacional desestacionalizada).
+# Mientras tanto el pipeline lo salta sin tronar (ver collect.py), así que
+# no bloquea la recolección de las demás series.
 national:
   - indicator_id: "444612"
     source: ENOE
