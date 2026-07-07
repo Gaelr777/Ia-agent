@@ -60,11 +60,17 @@ def collect_for_sector(sector: str) -> int:
     for entry in entries:
         is_national = entry in config.get("national", [])
         sector_for_row = None if is_national else sector
+
+        try:
+            raw = fetch_indicators([entry["indicator_id"]])
+            observations = parse_observations(raw)
+        except Exception as exc:
+            print(
+                f"Aviso: indicador {entry['indicator_id']} ({entry['source']}) falló, se omite: {exc}"
+            )
+            continue
+
         series_id = _upsert_series_row(client, sector_for_row, entry)
-
-        raw = fetch_indicators([entry["indicator_id"]])
-        observations = parse_observations(raw)
-
         for obs in observations:
             client.table("inegi_snapshots").upsert(
                 {
