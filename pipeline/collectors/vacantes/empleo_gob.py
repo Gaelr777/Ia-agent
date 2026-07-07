@@ -11,7 +11,22 @@ tráfico de red del sitio real:
 
 Solo se pide la primera página (50 resultados más recientes) por palabra
 clave — suficiente para un resumen mensual, no se busca ser exhaustivo.
+
+PENDIENTE (confirmado en producción, 2026-07-07): esta llamada devuelve
+HTTP 403 cuando corre en GitHub Actions. NO es un bloqueo general de IP de
+datacenter — la página principal del sitio (GET /) responde 200 normal
+desde el mismo runner (ver pipeline/collectors/vacantes/diagnose_hosts.py).
+El bloqueo es específico de este endpoint POST. Se probó agregar headers
+Origin/Referer/Accept sin éxito. Hipótesis sin confirmar: el endpoint
+podría requerir un token de sesión (la respuesta trae
+`access-control-expose-headers: X-Token`, aunque no confirmamos que algún
+endpoint lo devuelva realmente con valor). Antes de invertir más tiempo
+adivinando, considera: (a) contactar a la STPS/CGSNE preguntando por un
+canal de sindicación oficial para terceros, o (b) revisar de nuevo con
+DevTools el flujo completo de la petición real de búsqueda (no la de
+autocompletado) copiando TODAS sus Request Headers tal cual.
 """
+from datetime import date, datetime
 from datetime import date, datetime
 
 from pipeline.collectors.vacantes.base import JobPosting, RateLimitedSession
