@@ -44,7 +44,15 @@ def search(scian_code: str, max_results: int = 50) -> list[JobPosting]:
             "filter": {},
         }
         try:
-            response = session.post(SEARCH_URL, json=payload)
+            response = session.post(
+                SEARCH_URL,
+                json=payload,
+                headers={
+                    "Accept": "application/json, text/plain, */*",
+                    "Origin": "https://www.empleo.gob.mx",
+                    "Referer": "https://www.empleo.gob.mx/PortalDigital",
+                },
+            )
         except Exception as exc:
             print(f"Aviso: búsqueda '{keyword}' falló, se omite: {exc}")
             continue
