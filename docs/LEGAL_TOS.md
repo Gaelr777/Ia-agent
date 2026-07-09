@@ -1,9 +1,9 @@
 # Fuentes de vacantes: legalidad, ToS y recomendación
 
 Resumen ejecutivo: **usa el Portal del Empleo (gob.mx) como fuente primaria de
-vacantes; trata a OCC Mundial/Computrabajo como fuente secundaria opcional de
-bajo volumen y alto cuidado legal; evita LinkedIn e Indeed para recolección
-automatizada.**
+vacantes; usa Indeed en modo asistido (vía el conector de Claude, sin
+scraping) como complemento manual; evita OCC Mundial/Computrabajo (tienen
+protección anti-bot activa además del ToS) y LinkedIn para automatización.**
 
 ## 1. Portal del Empleo / Servicio Nacional de Empleo (empleo.gob.mx) — recomendado
 
@@ -64,6 +64,18 @@ automatizada.**
 - El código incluido (`pipeline/collectors/vacantes/occ_mundial.py`) está
   deshabilitado por defecto y documentado como "usar bajo tu propio
   criterio legal", no como recomendación de uso en producción sin revisión.
+- **Estado real (2026-07-09):** se inspeccionó el endpoint real que usa
+  occ.com.mx para buscar (`POST api-collector.occ.com.mx/offer/search`) y
+  su payload trae varios campos con toda la pinta de tokens de
+  fingerprinting/anti-bot generados por JS del cliente (timestamps de
+  cliente/servidor, hashes largos tipo `isea`). Eso es una señal técnica,
+  no solo legal, de que OCC activamente detecta y bloquea automatización
+  en este endpoint. Decisión: **no perseguir esta fuente** — usar un
+  navegador automatizado (Playwright) para que genere esos tokens en lugar
+  de replicarlos a mano seguiría siendo evasión de un control anti-bot, lo
+  cual contradice la recomendación de este mismo documento de "sin evadir
+  ningún control anti-bot". Computrabajo no se investigó a este nivel de
+  detalle pero se asume un riesgo similar hasta demostrar lo contrario.
 
 ## 3. LinkedIn Jobs — no recomendado para automatización
 
@@ -79,19 +91,36 @@ automatizada.**
   interactiva (no como parte del cron), y no lo persistas en el pipeline
   mensual automatizado.
 
-## 4. Indeed — no recomendado para automatización
+## 4. Indeed — no automatizable, pero usable en modo asistido
 
 - Indeed cerró su API pública de búsqueda de empleos hace años; su
   `robots.txt` público bloquea explícitamente el crawling de rutas de
-  listados de empleo (`/jobs/...`) para bots genéricos.
-- El conector de Indeed disponible en *esta sesión de Claude* es una
-  integración especial vinculada a tu cuenta de Claude/Anthropic — no es
-  una API key que puedas usar desde un script en GitHub Actions. No sirve
-  para el cron automatizado de este proyecto, solo para consultas puntuales
-  dentro de un chat interactivo.
-- **Recomendación**: no lo incluyas en el pipeline automatizado. Si más
-  adelante Anthropic o Indeed ofrecen una integración programática estable
-  y con licencia clara para este uso, se puede revisar.
+  listados de empleo (`/jobs/...`) para bots genéricos, así que **no
+  scrapeamos Indeed directamente**.
+- El conector de Indeed disponible en *sesiones de chat de Claude*
+  (`search_jobs` / `get_job_details`) sí trae datos reales de la API de
+  búsqueda de Indeed — no es scraping, pero está vinculado a la cuenta de
+  Claude/Anthropic de la sesión, no es una API key portable a un script
+  desatendido en GitHub Actions.
+- **Estado real (2026-07-09):** en vez de descartarlo, se implementó un
+  flujo de dos pasos para aprovecharlo sin necesitar credenciales
+  automatizables:
+  1. En una sesión de chat con el conector disponible, se corren
+     búsquedas por sector y se arma un JSON con los resultados (ver el
+     esquema documentado en `pipeline/collectors/vacantes/indeed_manual.py`).
+  2. Ese JSON se pega manualmente en el input del workflow
+     `indeed-manual-import.yml` (Actions → Run workflow), que sí tiene las
+     credenciales de Supabase como secreto y persiste los datos con el
+     mismo `persist_postings()` que usan las demás fuentes.
+- **Requisito de atribución**: el conector exige conservar el link de
+  "aplicar" (`description_url`) junto al título de cada vacante en
+  cualquier lugar donde se muestre — no lo omitas si en algún momento este
+  dato se expone en un reporte o dashboard visible al usuario final.
+- **Limitación de este modo**: no es un cron mensual desatendido, requiere
+  que alguien (o una sesión de Claude) corra las búsquedas a mano cada vez.
+  Es un complemento de baja fricción para tener datos reales de Indeed sin
+  scraping, no un reemplazo de una fuente 100% automatizada como
+  empleo.gob.mx.
 
 ## 5. Buenas prácticas generales de scraping para este proyecto
 
