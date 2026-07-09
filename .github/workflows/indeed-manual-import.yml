@@ -31,6 +31,13 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SECTOR: ${{ github.event.inputs.sector }}
+          VACANTES_JSON: ${{ github.event.inputs.vacantes_json }}
+        # Importante: el JSON se pasa por variable de entorno, no interpolado
+        # directamente en el script (${{ }} se sustituye como texto crudo
+        # ANTES de que corra bash, así que cualquier paréntesis, comilla o
+        # backtick en las descripciones rompe la sintaxis del shell o, peor,
+        # podría inyectar comandos). Como variable de entorno, bash la trata
+        # como un string opaco.
         run: |
-          echo "${{ github.event.inputs.vacantes_json }}" | \
-            python -m pipeline.collectors.vacantes.indeed_manual --sector "${{ github.event.inputs.sector }}"
+          echo "$VACANTES_JSON" | python -m pipeline.collectors.vacantes.indeed_manual --sector "$SECTOR"
