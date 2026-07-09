@@ -1,0 +1,36 @@
+name: Importar vacantes de Indeed (manual)
+
+# Disparo exclusivamente manual: pega aquí el JSON de vacantes que hayas
+# recolectado en una sesión de chat de Claude con el conector de Indeed
+# (ver pipeline/collectors/vacantes/indeed_manual.py para el esquema y el
+# flujo completo).
+on:
+  workflow_dispatch:
+    inputs:
+      sector:
+        description: "Código SCIAN de las vacantes, ej. '31-33'"
+        required: true
+      vacantes_json:
+        description: "JSON (lista de objetos) con las vacantes, según el esquema de indeed_manual.py"
+        required: true
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r pipeline/requirements.txt
+
+      - name: Importar vacantes
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "${{ github.event.inputs.vacantes_json }}" | \
+            python -m pipeline.collectors.vacantes.indeed_manual --sector "${{ github.event.inputs.sector }}"
