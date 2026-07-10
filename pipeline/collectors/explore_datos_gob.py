@@ -9,6 +9,8 @@ siguiente paso sería un colector real que descargue ese recurso específico
 
 Uso: python -m pipeline.collectors.explore_datos_gob
 """
+import os
+
 import requests
 
 BASE_URL = "https://datos.gob.mx/busca/api/3/action/package_search"
@@ -20,6 +22,17 @@ USER_AGENT = (
     "contacto: configura CONTACT_EMAIL en el workflow)"
 )
 
+# datos.gob.mx (visto en una corrida real, 2026-07-10) no manda el
+# certificado intermedio completo, así que el bundle de `certifi` que usa
+# requests por default no puede armar la cadena de confianza
+# ("unable to get local issuer certificate"). El almacén de certificados
+# del sistema operativo en runners Ubuntu (paquete ca-certificates) suele
+# traer cadenas más completas para este tipo de sitios de gobierno. Si
+# existe, lo usamos en vez del bundle de Python — sigue siendo verificación
+# real de TLS, solo contra un almacén de confianza distinto.
+_SYSTEM_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt"
+VERIFY = _SYSTEM_CA_BUNDLE if os.path.exists(_SYSTEM_CA_BUNDLE) else True
+
 
 def search(query: str, rows: int = 5) -> list[dict]:
     response = requests.get(
@@ -27,6 +40,7 @@ def search(query: str, rows: int = 5) -> list[dict]:
         params={"q": query, "rows": rows},
         headers={"User-Agent": USER_AGENT},
         timeout=30,
+        verify=VERIFY,
     )
     response.raise_for_status()
     data = response.json()
