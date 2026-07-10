@@ -13,3 +13,5 @@ jobs:
           python-version: "3.12"
       - run: pip install requests
       - run: python -m pipeline.collectors.vacantes.diagnose_hosts
+      - name: Explorar catálogo de datos.gob.mx
+        run: python -m pipeline.collectors.explore_datos_gob
