@@ -11,6 +11,10 @@ HOSTS = [
     "https://www.empleo.gob.mx/",
     "https://www.occ.com.mx/",
     "https://www.computrabajo.com.mx/",
+    # Candidatos nuevos: bolsas institucionales de bajo riesgo legal
+    # (gobierno federal/estatal, cámaras empresariales) sin probar todavía.
+    "https://www.gob.mx/jovenesconstruyendoelfuturo",
+    "https://www.canacintra.org.mx/",
 ]
 
 USER_AGENT = (
